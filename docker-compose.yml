@@ -1,0 +1,116 @@
+version: "3.9"
+
+services:
+  # ========================================
+  # GPIWD Gateway — Main Security Engine
+  # ========================================
+  gpiwd:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: gpiwd-gateway
+    restart: unless-stopped
+    ports:
+      - "7777:7777"
+    env_file:
+      - .env
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - DATABASE_URL=postgresql://gpiwd:${DB_PASSWORD:-gpiwd_pass}@postgres:5432/gpiwd
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    networks:
+      - gpiwd-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7777/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    labels:
+      - "gpiwd.role=gateway"
+      - "gpiwd.version=1.0.0"
+
+  # ========================================
+  # Redis — Cache, Rate Limiting, Blacklist
+  # ========================================
+  redis:
+    image: redis:7-alpine
+    container_name: gpiwd-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    networks:
+      - gpiwd-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ========================================
+  # PostgreSQL — Persistent Threat Storage
+  # ========================================
+  postgres:
+    image: postgres:15-alpine
+    container_name: gpiwd-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: gpiwd
+      POSTGRES_USER: gpiwd
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-gpiwd_pass}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - gpiwd-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gpiwd"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ========================================
+  # Dashboard — SOC Frontend (V1)
+  # ========================================
+  dashboard:
+    build:
+      context: ./dashboard
+      dockerfile: Dockerfile
+    container_name: gpiwd-dashboard
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - VITE_GPIWD_API_URL=http://gpiwd:7777
+    depends_on:
+      - gpiwd
+    networks:
+      - gpiwd-net
+    profiles:
+      - dashboard
+
+# ========================================
+# Networks
+# ========================================
+networks:
+  gpiwd-net:
+    driver: bridge
+    name: gpiwd-network
+
+# ========================================
+# Volumes
+# ========================================
+volumes:
+  redis_data:
+    driver: local
+  postgres_data:
+    driver: local
