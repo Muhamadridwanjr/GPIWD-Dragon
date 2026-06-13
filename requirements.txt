@@ -1,0 +1,50 @@
+# GPIWD-Dragon Python Dependencies
+# Install: pip install -r requirements.txt
+
+# --- Core Framework ---
+fastapi==0.110.0
+uvicorn[standard]==0.29.0
+pydantic==2.7.0
+pydantic-settings==2.3.0
+
+# --- HTTP Client (for proxying requests) ---
+httpx==0.27.0
+aiohttp==3.9.5
+
+# --- Database ---
+asyncpg==0.29.0
+sqlalchemy[asyncio]==2.0.30
+alembic==1.13.1
+
+# --- Redis ---
+redis[hiredis]==5.0.4
+aioredis==2.0.1
+
+# --- Security ---
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+python-multipart==0.0.9
+
+# --- WAF & Threat Detection ---
+validators==0.28.0
+ua-parser==0.18.0
+
+# --- IP Intelligence ---
+requests==2.31.0
+
+# --- Telegram Alerts ---
+python-telegram-bot==21.0.1
+
+# --- Monitoring & Logging ---
+structlog==24.1.0
+prometheus-fastapi-instrumentator==7.0.0
+
+# --- Testing ---
+pytest==8.2.0
+pytest-asyncio==0.23.6
+httpx==0.27.0
+
+# --- Development ---
+black==24.4.2
+ruff==0.4.4
+pre-commit==3.7.1
